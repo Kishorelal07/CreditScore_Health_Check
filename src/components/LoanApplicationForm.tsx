@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, CheckCircle2, XCircle, IndianRupee } from "lucide-react";
 import { EligibilityResult } from "./EligibilityResult";
@@ -77,23 +76,29 @@ export function LoanApplicationForm() {
     setResult(null);
 
     try {
-      // Call the backend edge function for eligibility check
-      const { data: responseData, error } = await supabase.functions.invoke('check-loan-eligibility', {
-        body: {
+      // Call the Spring Boot backend API for eligibility check
+      const response = await fetch('/api/loan/checkEligibility', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           name: data.name,
           loanAmount: Number(data.loanAmount),
           mobileNumber: data.mobileNumber,
           panNumber: data.panNumber.toUpperCase(),
           monthlyIncome: Number(data.monthlyIncome),
-        },
+        }),
       });
 
-      if (error) {
-        console.error('Error checking eligibility:', error);
-        toast.error('Failed to check eligibility. Please try again.');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to check eligibility' }));
+        console.error('Error checking eligibility:', errorData);
+        toast.error(errorData.message || 'Failed to check eligibility. Please try again.');
         return;
       }
 
+      const responseData: EligibilityResponse = await response.json();
       setResult(responseData);
       
       if (responseData.eligible) {

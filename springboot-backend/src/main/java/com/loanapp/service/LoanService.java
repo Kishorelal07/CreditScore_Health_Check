@@ -1,8 +1,12 @@
 package com.loanapp.service;
 
+import com.loanapp.entity.LoanEntity;
 import com.loanapp.model.LoanRequest;
 import com.loanapp.model.EligibilityResponse;
+import com.loanapp.repository.LoanEntityRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Random;
 
@@ -14,13 +18,21 @@ import java.util.Random;
 public class LoanService {
     
     private final Random random = new Random();
+    private final LoanEntityRepository loanEntityRepository;
+    
+    @Autowired
+    public LoanService(LoanEntityRepository loanEntityRepository) {
+        this.loanEntityRepository = loanEntityRepository;
+    }
     
     /**
      * Main method to check loan eligibility
+     * Saves the loan application to the database
      * 
      * @param request LoanRequest containing user details
      * @return EligibilityResponse with eligibility determination
      */
+    @Transactional
     public EligibilityResponse checkEligibility(LoanRequest request) {
         System.out.println("Processing loan eligibility for: " + request.getName());
         
@@ -28,25 +40,49 @@ public class LoanService {
         int cibilScore = calculateCibilScore(request.getMonthlyIncome(), request.getLoanAmount());
         System.out.println("Calculated CIBIL score: " + cibilScore);
         
+        // Create entity from request
+        LoanEntity loanEntity = new LoanEntity(
+            request.getName(),
+            request.getLoanAmount(),
+            request.getMobileNumber(),
+            request.getPanNumber(),
+            request.getMonthlyIncome()
+        );
+        loanEntity.setCibilScore(cibilScore);
+        
         // Rule 1: Check minimum CIBIL score requirement (600)
         if (cibilScore < 600) {
             System.out.println("Rejected: CIBIL score below minimum threshold");
+            loanEntity.setEligible(false);
+            loanEntity.setMaxEligibleAmount(0.0);
+            loanEntity.setMessage("Your credit score is below the minimum required threshold. Please improve your credit history and try again.");
+            
+            // Save to database
+            loanEntityRepository.save(loanEntity);
+            
             return new EligibilityResponse(
                 false,
                 cibilScore,
                 0.0,
-                "Your credit score is below the minimum required threshold. Please improve your credit history and try again."
+                loanEntity.getMessage()
             );
         }
         
         // Rule 2: Check minimum monthly income requirement (₹20,000)
         if (request.getMonthlyIncome() < 20000) {
             System.out.println("Rejected: Monthly income below minimum requirement");
+            loanEntity.setEligible(false);
+            loanEntity.setMaxEligibleAmount(0.0);
+            loanEntity.setMessage("Your monthly income does not meet the minimum requirement of ₹20,000.");
+            
+            // Save to database
+            loanEntityRepository.save(loanEntity);
+            
             return new EligibilityResponse(
                 false,
                 cibilScore,
                 0.0,
-                "Your monthly income does not meet the minimum requirement of ₹20,000."
+                loanEntity.getMessage()
             );
         }
         
@@ -90,6 +126,15 @@ public class LoanService {
         }
         
         System.out.println("Approved: " + message);
+        
+        // Set entity fields and save to database
+        loanEntity.setEligible(true);
+        loanEntity.setMaxEligibleAmount(maxEligibleAmount);
+        loanEntity.setMessage(message);
+        
+        // Save to database
+        loanEntityRepository.save(loanEntity);
+        System.out.println("Loan application saved to database with ID: " + loanEntity.getId());
         
         return new EligibilityResponse(
             true,

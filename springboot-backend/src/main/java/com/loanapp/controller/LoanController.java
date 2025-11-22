@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/loan")
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "*"})
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "http://localhost:8080"})
 public class LoanController {
     
     private final LoanService loanService;

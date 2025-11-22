@@ -176,24 +176,15 @@ curl -X POST http://localhost:8080/api/loan/checkEligibility \
 
 ## Connecting to React Frontend
 
-### Option 1: Update React to use Spring Boot (port 8080)
-In your React project, update the API endpoint in `src/components/LoanApplicationForm.tsx`:
+The React frontend is configured to use the Spring Boot API. The frontend makes requests to `/api/loan/checkEligibility` which is proxied to the Spring Boot backend running on port 8080.
 
-```typescript
-const response = await supabase.functions.invoke('check-loan-eligibility', {
-  body: formData
-});
-// Change to:
-const response = await fetch('http://localhost:8080/api/loan/checkEligibility', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(formData)
-});
-const data = await response.json();
-```
+### CORS Configuration
+CORS is already configured in `LoanController.java` and `application.properties` to allow requests from:
+- `http://localhost:5173` (Vite dev server)
+- `http://localhost:3000` (Alternative React dev server)
+- `http://localhost:8080` (If frontend is served from same port)
 
-### Option 2: Enable CORS in Spring Boot
-The GlobalExceptionHandler already includes CORS configuration, but you can customize allowed origins in `LoanController.java`.
+You can customize allowed origins in `LoanController.java` if needed.
 
 ## Adding Your Own Functionalities
 
